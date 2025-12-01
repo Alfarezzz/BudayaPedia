@@ -20,7 +20,7 @@ class _LoginPageState extends State<LoginPage> {
   // Instances
   final FirebaseAuth _auth = FirebaseAuth.instance;
   // Gunakan const untuk menghindari error constructor
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(git remote remove origin);
 
   // Controllers
   final TextEditingController _emailController = TextEditingController();
