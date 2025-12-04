@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:budayapedia/pages/welcome.dart';
+import 'package:budayapedia/pages/home.dart';
+import 'package:budayapedia/pages/signup.dart';
 
 // Konstanta Warna
 const Color primaryColor = Color(0xFF2C3E50); // Biru gelap untuk tombol utama
@@ -20,7 +22,7 @@ class _LoginPageState extends State<LoginPage> {
   // Instances
   final FirebaseAuth _auth = FirebaseAuth.instance;
   // Gunakan const untuk menghindari error constructor
-  final GoogleSignIn _googleSignIn = GoogleSignIn(git remote remove origin);
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   // Controllers
   final TextEditingController _emailController = TextEditingController();
@@ -88,7 +90,7 @@ class _LoginPageState extends State<LoginPage> {
       // Gunakan pushReplacement agar pengguna tidak bisa kembali ke halaman login
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const WelcomePage()),
+        MaterialPageRoute(builder: (context) => const HomePage()),
       );
 
     } on FirebaseAuthException catch (e) {
@@ -131,7 +133,7 @@ class _LoginPageState extends State<LoginPage> {
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const WelcomePage()),
+        MaterialPageRoute(builder: (context) => const HomePage()),
       );
 
     } on FirebaseAuthException catch (e) {
@@ -376,7 +378,10 @@ class _LoginPageState extends State<LoginPage> {
                   const Text("Don't have an account? ", style: TextStyle(color: textColor, fontFamily: 'DMSans')),
                   TextButton(
                     onPressed: () {
-                      print('Sign up ditekan!');
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SignUpPage()),
+                      );
                     },
                     child: const Text('Sign up', style: TextStyle(color: primaryColor, fontWeight: FontWeight.w600, fontFamily: 'DMSans')),
                   ),
