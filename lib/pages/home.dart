@@ -1,3 +1,5 @@
+// home.dart
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 // Import file teman Anda:
@@ -7,6 +9,8 @@ import 'courseview.dart';
 import 'setting_panel.dart'; 
 import 'notifikasi.dart';
 import 'welcome.dart'; 
+// >>> TAMBAHKAN IMPORT PROFILE BARU <<<
+import 'profile.dart'; 
 
 // Definisikan warna yang digunakan dalam desain Anda
 const Color primaryColor = Color(0xFF2C3E50);
@@ -37,6 +41,7 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         // Asumsi SettingsPanel ada di setting_panel.dart
+        // HATI-HATI: Pastikan 'SettingsPanel' tersedia di file setting_panel.dart
         return const SettingsPanel();
       },
     );
@@ -52,18 +57,22 @@ class _HomePageState extends State<HomePage> {
   }
 
   // Daftar widget/halaman yang akan ditampilkan (Menggunakan callback)
+  // Perhatikan perubahan di indeks 3!
   late final List<Widget> _pages = [
     // [0] HomeContentWidget sekarang menerima fungsi callback
     HomeContentWidget(
       onNotificationsPressed: _navigateToNotifications,
       onSettingsPressed: _showSideSettingsPanel,
     ), 
-    MyCoursePage(),// [1] Halaman Kursus (dari mycourse.dart)
+    const MyCoursePage(),// [1] Halaman Kursus (dari mycourse.dart)
     const Center(child: Text('Halaman New (Add Box)', style: TextStyle(fontSize: 24, color: darkTextColor))),
-    const Center(child: Text('Halaman Account', style: TextStyle(fontSize: 24, color: darkTextColor))),
+    const ProfilePage(), // [3] >>> INI HALAMAN PROFILE BARU ANDA <<<
   ];
 
   void onTabTapped(int index) {
+    // BUG FIX: Jika user mengklik tombol 'Account' saat di tab lain,
+    // kita set currentIndex ke 3. Jika user mengklik 'Account' saat sudah di tab 3,
+    // tidak perlu melakukan apa-apa, atau bisa juga refresh halaman.
     setState(() {
       _currentIndex = index;
     });
@@ -213,9 +222,11 @@ class HomeContentWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     
     // PERBAIKAN BUG: Mencari kursus Rendang secara spesifik
+    // Ganti pencarian Rendang dengan salah satu data kursus yang ada di mycourse.dart,
+    // Misal: "Filosofi Adat" atau "Tari Klasik"
     final Course popularCourse = allCourses.firstWhere(
-        (course) => course.title.contains("Rendang"),
-        orElse: () => allCourses[0], // Fallback ke kursus pertama jika Rendang tidak ditemukan (untuk menghindari error)
+        (course) => course.title.contains("Filosofi"),
+        orElse: () => allCourses[0], // Fallback ke kursus pertama jika tidak ditemukan
     );
     
     // Ambil display name pengguna yang login (jika ada)
@@ -319,19 +330,19 @@ class HomeContentWidget extends StatelessWidget {
             ),
           ),
 
-          // --- 3. Popular Course Card (Rendang) ---
+          // --- 3. Popular Course Card (Menggunakan data dari allCourses) ---
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: GestureDetector(
             onTap: () {
-              // Navigasi ke CourseDetailsView dengan membawa data Rendang (popularCourse)
+              // Navigasi ke CourseDetailsView dengan membawa data popularCourse
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => CourseDetailsView(course: popularCourse)),
               );
               },
-            child: _buildPopularCourseCard(context, popularCourse), // Menggunakan data Rendang
-          ),
+            child: _buildPopularCourseCard(context, popularCourse), // Menggunakan data yang sudah disesuaikan
+            ),
           ),
 
           // --- 4. Course Categories Header ---
@@ -342,7 +353,11 @@ class HomeContentWidget extends StatelessWidget {
               children: [
                 Text('Kategori Course', style: Theme.of(context).textTheme.headlineSmall!.copyWith(fontWeight: FontWeight.bold)),
                 TextButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    // Pindah ke tab Courses (Index 1) saat View All diklik
+                    final _HomePageState? state = context.findAncestorStateOfType<_HomePageState>();
+                    state?.onTabTapped(1); 
+                  },
                   child: const Text('View all', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
                 ),
               ],
@@ -355,24 +370,24 @@ class HomeContentWidget extends StatelessWidget {
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              // Menggunakan list kursus penuh (5 kursus)
+              // Menggunakan list kursus penuh
               itemCount: allCourses.length, 
               itemBuilder: (context, index) {
                 final course = allCourses[index];
                 
-                // Pengecekan: Lewati kursus yang sama dengan 'Popular Sekarang' (Rendang)
-                if (course.title.contains("Rendang")) return const SizedBox.shrink(); 
+                // Pengecekan: Lewati kursus yang sama dengan 'Popular Sekarang'
+                if (course.title.contains("Filosofi") && popularCourse == course) return const SizedBox.shrink(); 
                 
                 return GestureDetector(
-                   onTap: () {
+                    onTap: () {
                       // Navigasi kategori juga harus ke detail kursus terkait
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => CourseDetailsView(course: course)),
                       );
-                   },
-                   // Menggunakan kategori dan gambar kursus
-                   child: _buildCategoryCard(course.category, course.imageUrl), 
+                    },
+                    // Menggunakan kategori dan gambar kursus
+                    child: _buildCategoryCard(course.category, course.imageUrl), 
                 );
               },
             ),
@@ -396,13 +411,13 @@ class HomeContentWidget extends StatelessWidget {
                     children: [
                       const Icon(Icons.star, color: Colors.amber, size: 24),
                       const SizedBox(width: 8),
-                      Text('LearniO Premium', style: Theme.of(context).textTheme.titleLarge!.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
+                      Text('BudayaPedia Premium', style: Theme.of(context).textTheme.titleLarge!.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  const Text('More courses. More learning.', style: TextStyle(color: Colors.white70)),
+                  const Text('Lebih banyak course. Lebih banyak pengetahuan.', style: TextStyle(color: Colors.white70)),
                   const SizedBox(height: 15),
-                  const Text('Sign up for LearniO Premium and instantly access more of your favorite learning material and gain premium perks and benefits.',
+                  const Text('Daftar ke BudayaPedia Premium dan dapatkan akses instan ke lebih banyak materi pembelajaran budaya favorit Anda serta manfaat premium lainnya.',
                     style: TextStyle(color: Colors.white),
                   ),
                   const SizedBox(height: 20),
@@ -414,7 +429,7 @@ class HomeContentWidget extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
                     ),
-                    child: const Text('Learn More', style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: const Text('Pelajari Lebih Lanjut', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
