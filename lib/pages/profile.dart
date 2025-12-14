@@ -1,21 +1,38 @@
+// profile.dart (KOREKSI AKHIR: Hapus Helpdesk & Warna Premium)
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart'; 
-// Import file navigasi
+import 'dart:io'; 
+
+// Import file navigasi yang diperlukan
 import 'login.dart'; 
 import 'security_page.dart';
-import 'learning_history_page.dart'; 
-import 'badge_collection_page.dart'; 
-import 'favorites_page.dart'; 
 import 'settings_page.dart'; 
-import 'info_hub_page.dart'; // Import InfoHubPage yang baru
+import 'info_hub_page.dart'; 
+import 'learning_history_page.dart'; // Kelas ini akan direvisi di bagian bawah
 
-// Definisikan warna yang digunakan dalam desain Anda (Konsistensi)
-const Color primaryColor = Color(0xFF2C3E50); 
-const Color darkTextColor = Color(0xFF1E2A3B);
-const Color lightTextColor = Color(0xFF5A6B80);
-const Color accentColor = Color(0xFFFFCC33); // Kuning (Level Progress)
-const Color successColor = Color(0xFF27AE60); 
+// Definisikan warna yang digunakan (PALET PREMIUM)
+const Color primaryColor = Color(0xFF1F3A4B); // Biru Tua (Deep Navy)
+const Color darkTextColor = Color(0xFF212121); // Hitam Pekat
+const Color lightTextColor = Color(0xFF757575); // Abu-abu Medium
+const Color accentColor = Color(0xFF00BFA5); // Teal / Hijau Mint (Aksen Soft/Premium)
+const Color backgroundColor = Colors.white; // Background putih bersih
+const Color criticalColor = Color(0xFFB71C1C); // Merah Tua/Maroon (Profesional Red)
+
+
+// Placeholder Pages (Tetap)
+class DeleteAccountPage extends StatelessWidget {
+  const DeleteAccountPage({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Hapus Akun')),
+      body: const Center(child: Text('Halaman konfirmasi penghapusan akun permanen.')),
+    );
+  }
+}
+
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -28,18 +45,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final User? user = FirebaseAuth.instance.currentUser;
   late String currentUsername;
   final ImagePicker _picker = ImagePicker(); 
-
-  // --- DATA SIMULASI METRIK & LEVEL ---
-  final int userStreak = 30;
-  final int currentLevel = 10;
-  final double progressPercentage = 0.75; 
-  final List<Map<String, dynamic>> recentBadges = [
-    {'name': 'Jelajah Jawa', 'icon': Icons.location_city, 'color': Colors.orange},
-    {'name': 'Maestro Tari', 'icon': Icons.accessibility_new, 'color': Colors.blue},
-    {'name': '50 Kuis', 'icon': Icons.quiz, 'color': successColor},
-    {'name': 'Pelestari', 'icon': Icons.volunteer_activism, 'color': Colors.purple},
-  ];
-  // ------------------------------------
+  File? _selectedImageFile; 
 
   @override
   void initState() {
@@ -47,7 +53,7 @@ class _ProfilePageState extends State<ProfilePage> {
     currentUsername = getUsername(user);
   }
 
-  // --- UTILITY FUNGSI ---
+  // --- UTILITY FUNGSI (SAMA) ---
   String getUsername(User? user) {
       if (user?.displayName != null && user!.displayName!.isNotEmpty) {
           return user.displayName!;
@@ -76,21 +82,20 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     }
   }
-
-  void _pickImageFromCamera() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.camera);
-    if (image != null) _uploadImage(image);
-    if (mounted) Navigator.pop(context); 
-  }
-  void _pickImageFromGallery() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) _uploadImage(image);
-    if (mounted) Navigator.pop(context); 
-  }
-  void _uploadImage(XFile image) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Mengunggah foto: ${image.name}...",)));
-  }
   
+  void _pickImage(ImageSource source) async {
+    final XFile? image = await _picker.pickImage(source: source);
+    if (image != null) {
+      setState(() {
+        _selectedImageFile = File(image.path);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Foto profil diperbarui (Lokal)!")));
+      }
+    }
+    if (mounted) Navigator.pop(context); 
+  }
+
   void _showPhotoOptions() {
     showModalBottomSheet(
       context: context,
@@ -100,8 +105,8 @@ class _ProfilePageState extends State<ProfilePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(padding: const EdgeInsets.all(16.0), child: Text('Foto Profil', style: Theme.of(context).textTheme.titleLarge!.copyWith(fontWeight: FontWeight.bold, color: darkTextColor))),
-            ListTile(leading: const Icon(Icons.camera_alt, color: darkTextColor), title: const Text('Kamera', style: TextStyle(color: darkTextColor)), onTap: _pickImageFromCamera),
-            ListTile(leading: const Icon(Icons.photo_library, color: darkTextColor), title: const Text('Galeri', style: TextStyle(color: darkTextColor)), onTap: _pickImageFromGallery),
+            ListTile(leading: const Icon(Icons.camera_alt, color: darkTextColor), title: const Text('Kamera', style: TextStyle(color: darkTextColor)), onTap: () => _pickImage(ImageSource.camera)),
+            ListTile(leading: const Icon(Icons.photo_library, color: darkTextColor), title: const Text('Galeri', style: TextStyle(color: darkTextColor)), onTap: () => _pickImage(ImageSource.gallery)),
             const SizedBox(height: 10),
           ],
         );
@@ -123,7 +128,8 @@ class _ProfilePageState extends State<ProfilePage> {
               onPressed: () {
                 final newName = nameController.text.trim();
                 if (newName.isNotEmpty) {
-                  _updateUsername(newName);
+                  setState(() { currentUsername = newName; });
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Nama berhasil diperbarui!")));
                   Navigator.pop(context);
                 }
               },
@@ -135,212 +141,122 @@ class _ProfilePageState extends State<ProfilePage> {
       },
     );
   }
-
-  Future<void> _updateUsername(String newName) async {
-    try {
-      if (user != null) {
-        await user!.updateDisplayName(newName);
-        setState(() { currentUsername = newName; });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Nama berhasil diperbarui!")));
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal memperbarui nama: $e")));
-    }
-  }
   // --- END UTILITY FUNGSI ---
-  
-  
-  // WIDGET KARTU LEVEL/PROGRESS
-  Widget _buildLevelProgressCard(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => const LearningHistoryPage()));
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(18),
-        margin: const EdgeInsets.only(bottom: 20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [primaryColor.withOpacity(0.9), primaryColor],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: primaryColor.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Tingkat Kemahiran Anda', style: TextStyle(color: Colors.white70, fontSize: 12)),
-            const SizedBox(height: 5),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Level $currentLevel: Pewaris Budaya', 
-                     style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                const Icon(Icons.shield_moon_outlined, color: Colors.white, size: 28),
-              ],
-            ),
-            const SizedBox(height: 10),
 
-            // Progress Bar Visual
-            LinearProgressIndicator(
-              value: progressPercentage,
-              backgroundColor: Colors.white38,
-              valueColor: AlwaysStoppedAnimation<Color>(accentColor), 
-            ),
-            const SizedBox(height: 5),
-            Text('${(progressPercentage * 100).toInt()}% menuju Level ${currentLevel + 1}', 
-                 style: const TextStyle(color: Colors.white70, fontSize: 12)),
-          ],
-        ),
+
+  // WIDGET KHUSUS: ITEM MENU BORDERLESS
+  Widget _buildBorderlessMenuItem(
+      {required IconData icon, required String title, required VoidCallback onTap, required Color itemColor, bool isLogout = false}) {
+    
+    // Logika Warna Ikon: Jika Logout, pakai Critical; jika tidak, pakai itemColor (Primary/Accent)
+    final Color iconColor = isLogout ? criticalColor : itemColor;
+    final Color textColor = isLogout ? criticalColor : darkTextColor;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0), 
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+        minLeadingWidth: 20,
+        leading: Icon(icon, color: iconColor, size: 24),
+        title: Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: textColor)),
+        trailing: Icon(Icons.chevron_right, color: lightTextColor.withOpacity(0.8)),
+        onTap: onTap,
       ),
     );
   }
 
-  // WIDGET KARTU STREAK BARU (LEBAR PENUH - FOKUS UTAMA METRIK)
-  Widget _buildStreakFullWidthCard() {
-    return Container(
-      width: double.infinity, 
-      padding: const EdgeInsets.all(18),
-      margin: const EdgeInsets.only(bottom: 25.0),
-      decoration: BoxDecoration(
-        color: Colors.white, 
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.red.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+  // WIDGET KHUSUS: GROUP MENU BORDERLESS
+  Widget _buildMenuGroup(String title, List<Widget> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 40, bottom: 10, left: 0),
+          child: Text(
+            title.toUpperCase(),
+            style: const TextStyle(fontSize: 13, letterSpacing: 0.5, fontWeight: FontWeight.w700, color: lightTextColor),
           ),
-        ],
-        border: Border.all(color: Colors.red.withOpacity(0.3), width: 1.5)
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10), 
+          child: Column(
+            children: items,
+          ),
+        ),
+      ],
+    );
+  }
+
+
+  // WIDGET HEADER TERINTEGRASI
+  Widget _buildProfileHeader(String email) {
+    ImageProvider? imageProvider;
+    
+    if (_selectedImageFile != null) {
+      imageProvider = FileImage(_selectedImageFile!);
+    } else if (user?.photoURL != null && user!.photoURL!.isNotEmpty) {
+      imageProvider = NetworkImage(user!.photoURL!);
+    }
+    
+    return Container(
+      padding: const EdgeInsets.only(top: 20, bottom: 40),
+      width: double.infinity,
+      child: Column( 
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Icon(Icons.local_fire_department, color: Colors.red, size: 35),
-          const SizedBox(width: 15),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+          // 1. Foto Profil
+          Stack(
             children: [
-              Text(
-                userStreak.toString(), 
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: darkTextColor)
+              CircleAvatar(
+                radius: 40, 
+                backgroundColor: primaryColor.withOpacity(0.1), 
+                backgroundImage: imageProvider, 
+                child: imageProvider == null ? const Icon(Icons.person, size: 40, color: primaryColor) : null
               ),
-              const Text(
-                'Hari Berturut-turut (Streak)', 
-                style: TextStyle(fontSize: 12, color: lightTextColor)
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: _showPhotoOptions, 
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: const BoxDecoration(
+                      color: primaryColor, 
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.camera_alt, size: 14, color: backgroundColor),
+                  ),
+                ),
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-
-  // WIDGET KARTU MENU INTERAKTIF
-  Widget _buildInteractiveCard(BuildContext context, IconData icon, String title, VoidCallback onTap, {bool isLogout = false}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-        margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: lightTextColor.withOpacity(0.1), width: 1),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: isLogout ? Colors.red.withOpacity(0.1) : primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: isLogout ? Colors.red : primaryColor, size: 24),
-            ),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Text(
-                title, 
-                style: TextStyle(
-                  fontSize: 16, 
-                  fontWeight: FontWeight.w600,
-                  color: isLogout ? Colors.red : darkTextColor
+          const SizedBox(height: 20),
+          
+          // 2. Nama Pengguna
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center, 
+            children: [
+              Text(
+                currentUsername, 
+                style: const TextStyle(
+                  fontSize: 28, 
+                  fontWeight: FontWeight.w900, 
+                  color: darkTextColor
                 )
               ),
-            ),
-            isLogout ? const SizedBox.shrink() : const Icon(Icons.chevron_right, color: lightTextColor),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  // WIDGET PREVIEW LENCANA
-  Widget _buildBadgesPreview() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 25.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Lencana Terbaru', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: lightTextColor)),
-          const SizedBox(height: 10),
-          
-          // TAMPILAN GRID LENCANA
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: 4, 
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4, 
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 1.0, 
-            ),
-            itemBuilder: (context, index) {
-              final badge = recentBadges[index];
-              return Tooltip(
-                message: badge['name'] as String,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: badge['color'].withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10), 
-                    border: Border.all(color: badge['color'], width: 1.5),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      badge['icon'] as IconData,
-                      color: badge['color'] as Color,
-                      size: 28,
-                    ),
-                  ),
-                ),
-              );
-            },
+              GestureDetector(
+                onTap: _editUsername, 
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 8.0, top: 4.0), 
+                  child: Icon(Icons.mode_edit_outline, size: 18, color: lightTextColor.withOpacity(0.8)) 
+                )
+              ),
+            ]
           ),
+          const SizedBox(height: 5),
           
-          const SizedBox(height: 15),
-          GestureDetector(
-             onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const BadgeCollectionPage()),
-             ),
-             child: const Center(
-                child: Text('Lihat Semua Koleksi Lencana', style: TextStyle(color: primaryColor, fontSize: 13, fontWeight: FontWeight.w500)),
-             ),
-          ),
+          // 3. Email
+          Text(email, style: const TextStyle(fontSize: 15, color: lightTextColor)),
         ],
       ),
     );
@@ -350,89 +266,80 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final String email = user?.email ?? 'Tidak Tersedia';
-    final String photoUrl = user?.photoURL ?? '';
 
     return Scaffold(
+      backgroundColor: backgroundColor, 
       appBar: AppBar(
-        title: const Text('Akun Saya', style: TextStyle(fontWeight: FontWeight.bold, color: darkTextColor)),
-        backgroundColor: Colors.white,
-        elevation: 1,
+        backgroundColor: backgroundColor,
+        elevation: 0, 
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20.0), 
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            // --- 1. Header Profil ---
-            Container(
-              padding: const EdgeInsets.only(top: 30, bottom: 20),
-              width: double.infinity,
-              child: Column(
-                children: [
-                  CircleAvatar(radius: 40, backgroundColor: primaryColor.withOpacity(0.1), backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) as ImageProvider : null, child: photoUrl.isEmpty ? const Icon(Icons.person, size: 40, color: primaryColor) : null),
-                  GestureDetector(onTap: _showPhotoOptions, child: const Padding(padding: EdgeInsets.only(top: 8.0), child: Text('Edit', style: TextStyle(color: primaryColor, fontSize: 12, fontWeight: FontWeight.w600)))),
-                  const SizedBox(height: 15),
-                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Text(currentUsername, style: Theme.of(context).textTheme.headlineSmall!.copyWith(fontWeight: FontWeight.bold, color: darkTextColor)),
-                    GestureDetector(onTap: _editUsername, child: const Padding(padding: EdgeInsets.only(left: 4.0), child: Icon(Icons.edit, size: 20, color: lightTextColor))),
-                  ]),
-                  const SizedBox(height: 5),
-                  Text(email, style: const TextStyle(fontSize: 14, color: lightTextColor)),
-                ],
-              ),
+            // --- 1. HEADER PROFIL TERINTEGRASI ---
+            _buildProfileHeader(email), 
+            
+            // --- 2. GROUP: AKTIVITAS & RIWAYAT ---
+            _buildMenuGroup(
+              'Aktivitas',
+              [
+                _buildBorderlessMenuItem(
+                  icon: Icons.history_toggle_off, 
+                  title: 'Riwayat Pembelajaran', 
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LearningHistoryPage())),
+                  itemColor: primaryColor, // WARNA Ikon SAMA: Primary
+                ),
+              ],
             ),
             
-            // --- KARTU LEVEL/PROGRESS (UTAMA) ---
-            _buildLevelProgressCard(context),
-
-            // --- 2. METRIK PRESTASI (STREAK - LEBAR PENUH) ---
-            _buildStreakFullWidthCard(),
-            
-            // --- PREVIEW LENCANA ---
-            _buildBadgesPreview(),
-
-
-            // --- 3. KELOMPOK MENU: RIWAYAT & KONTEN ---
-            const Align(alignment: Alignment.centerLeft, child: Text('Aktivitas Belajar', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: lightTextColor))),
-            const SizedBox(height: 10),
-            
-            // RIWAYAT PEMBELAJARAN
-            _buildInteractiveCard(context, Icons.history, 'Riwayat Pembelajaran', 
-              () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LearningHistoryPage())),
-            ),
-            // MATERI FAVORIT
-            _buildInteractiveCard(context, Icons.bookmark_border, 'Materi Favorit Saya', 
-              () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FavoriteContentPage())),
-            ),
-
-            // --- 4. KELOMPOK MENU: PENGATURAN & KEAMANAN ---
-            const SizedBox(height: 20),
-            const Align(alignment: Alignment.centerLeft, child: Text('Pengaturan Akun', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: lightTextColor))),
-            const SizedBox(height: 10),
-
-            // KEAMANAN AKUN
-            _buildInteractiveCard(context, Icons.lock_outline, 'Keamanan Akun', 
-              () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SecurityPage())),
+            // --- 3. GROUP: PENGATURAN & KEAMANAN ---
+            _buildMenuGroup(
+              'Pengaturan & Keamanan',
+              [
+                _buildBorderlessMenuItem(
+                  icon: Icons.lock_outline, 
+                  title: 'Keamanan Akun', 
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SecurityPage())),
+                  itemColor: primaryColor, // WARNA Ikon SAMA: Primary
+                ),
+                _buildBorderlessMenuItem(
+                  icon: Icons.settings_outlined, 
+                  title: 'Pengaturan Aplikasi', 
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsPage())),
+                  itemColor: primaryColor, // WARNA Ikon SAMA: Primary
+                ),
+              ],
             ),
             
-            // PENGATURAN APLIKASI
-            _buildInteractiveCard(context, Icons.settings_outlined, 'Pengaturan Aplikasi', 
-               () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsPage()))
+            // --- 4. GROUP: DUKUNGAN & INFORMASI (Helpdesk dihapus) ---
+            _buildMenuGroup(
+              'Dukungan & Informasi',
+              [
+                _buildBorderlessMenuItem(
+                  icon: Icons.info_outline, 
+                  title: 'Pusat Informasi BudayaPedia', 
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const InfoHubPage())),
+                  itemColor: accentColor, // WARNA Ikon SAMA: Accent
+                ),
+              ],
+            ),
+
+            // --- 5. TINDAKAN KRITIS (Hanya Logout) ---
+            _buildMenuGroup(
+              'Tindakan',
+              [
+                _buildBorderlessMenuItem(
+                  icon: Icons.logout, 
+                  title: 'Logout', 
+                  onTap: _handleSignOut, 
+                  itemColor: criticalColor, 
+                  isLogout: true, 
+                ),
+              ],
             ),
             
-            // --- 5. PUSAT INFORMASI & DUKUNGAN (Tombol Tunggal) ---
-            const SizedBox(height: 20),
-            const Align(alignment: Alignment.centerLeft, child: Text('Dukungan & Info', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: lightTextColor))),
-            const SizedBox(height: 10),
-
-            // PUSAT INFORMASI BUDAYAPEDIA (Menggantikan Bantuan, Privasi, dan Tentang)
-            _buildInteractiveCard(context, Icons.info_outline, 'Pusat Informasi BudayaPedia', 
-              () => Navigator.push(context, MaterialPageRoute(builder: (context) => const InfoHubPage())),
-            ),
-
-
-            // --- 6. KELOMPOK MENU: LOGOUT ---
-            const SizedBox(height: 30),
-            _buildInteractiveCard(context, Icons.logout, 'Logout', _handleSignOut, isLogout: true),
              const SizedBox(height: 40),
           ],
         ),

@@ -1,5 +1,3 @@
-// info_hub_page.dart (REVISI TOTAL: HALAMAN KONTEN TUNGGAL)
-
 import 'package:flutter/material.dart';
 
 // Definisikan warna yang digunakan (Konsisten)

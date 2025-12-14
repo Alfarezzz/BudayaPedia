@@ -1,90 +1,81 @@
-// learning_history_page.dart (KOREKSI FINAL TANPA SIMBOL NAVIGASI)
+// learning_history_page.dart (KODE FINAL YANG SUDAH DIKOREKSI)
 
 import 'package:flutter/material.dart';
-
-const Color primaryColor = Color(0xFF2C3E50);
-const Color darkTextColor = Color(0xFF1E2A3B);
-const Color lightTextColor = Color(0xFF5A6B80);
-const Color accentColor = Color(0xFFFFCC33); 
 
 class LearningHistoryPage extends StatelessWidget {
   const LearningHistoryPage({super.key});
 
-  Widget _buildStatCard(String title, String value, IconData icon) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: primaryColor, size: 28),
-            const SizedBox(height: 8),
-            Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: darkTextColor)),
-            const SizedBox(height: 4),
-            Text(title, style: const TextStyle(fontSize: 14, color: lightTextColor)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Widget ini disederhanakan (Simbol panah dihapus)
-  Widget _buildRecentActivity(String title, String time) {
-    return ListTile(
-      leading: const Icon(Icons.check_circle_outline, color: primaryColor),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-      subtitle: Text(time, style: const TextStyle(color: lightTextColor)),
-      // trailing dihapus untuk menghilangkan ikon panah
-    );
-  }
+  // Data contoh riwayat pembelajaran
+  final List<Map<String, String>> historyData = const [
+    {'title': 'Mengenal Tari Saman', 'date': '10 Des 2025', 'status': 'Selesai'},
+    {'title': 'Sejarah Keris di Jawa', 'date': '05 Des 2025', 'status': 'Selesai'},
+    {'title': 'Kuliner Nusantara: Rendang', 'date': '28 Nov 2025', 'status': 'Selesai'},
+    {'title': 'Arsitektur Rumah Adat Minangkabau', 'date': '15 Nov 2025', 'status': 'Selesai'},
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Riwayat Pembelajaran', style: TextStyle(fontWeight: FontWeight.bold, color: darkTextColor)),
-        backgroundColor: Colors.white,
-        elevation: 1,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Statistik
-            const Text('Statistik Anda', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkTextColor)),
-            const SizedBox(height: 10),
-            
-            // Grid Statistik
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              children: [
-                _buildStatCard('Jam Belajar', '53h 45m', Icons.timer),
-                _buildStatCard('Kursus Selesai', '5', Icons.school),
-                _buildStatCard('Lencana Diperoleh', '7', Icons.workspace_premium), 
-                _buildStatCard('Kuis Lulus', '28', Icons.quiz),
-              ],
-            ),
+    // Definisikan warna yang sama agar konsisten dengan halaman Profil
+    const Color darkTextColor = Color(0xFF212121);
+    const Color lightTextColor = Color(0xFF757575);
+    const Color primaryColor = Color(0xFF1F3A4B);
+    const Color accentColor = Color(0xFF00BFA5);
+    const Color backgroundColor = Colors.white;
 
-            const SizedBox(height: 25),
-            
-            // Riwayat Aktivitas Terbaru
-            const Text('Aktivitas Terbaru', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkTextColor)),
-            const SizedBox(height: 10),
-            
-            _buildRecentActivity('Menyelesaikan Kuis Tari Bedhaya', '30 menit lalu'),
-            _buildRecentActivity('Mulai Course Manik-Manik Dayak', '2 jam lalu'),
-            _buildRecentActivity('Mendapat Lencana "Pelestari Adat"', 'Kemarin'),
-            _buildRecentActivity('Menonton video: Arsitektur Rumah Gadang', '2 hari lalu'),
-          ],
-        ),
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      appBar: AppBar(
+        title: const Text('Riwayat Pembelajaran', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: backgroundColor,
+        elevation: 0,
+        foregroundColor: primaryColor, // Menggunakan warna primer untuk ikon back
       ),
+      body: historyData.isEmpty
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(30.0),
+                child: Text(
+                  'Anda belum menyelesaikan pembelajaran apa pun. Mari mulai belajar budaya baru!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: lightTextColor, fontSize: 16),
+                ),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+              itemCount: historyData.length,
+              itemBuilder: (context, index) {
+                final item = historyData[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 15.0),
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    minVerticalPadding: 10,
+                    
+                    // Ikon sebagai penanda Selesai (Menggunakan warna Aksen)
+                    leading: const Icon(Icons.check_circle_outline, color: accentColor, size: 28),
+                    
+                    title: Text(
+                      item['title']!,
+                      style: const TextStyle(fontWeight: FontWeight.w600, color: darkTextColor, fontSize: 16),
+                    ),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Text(
+                        'Selesai pada: ${item['date']!}', // Ditambahkan Null Safety
+                        style: const TextStyle(color: lightTextColor, fontSize: 13),
+                      ),
+                    ),
+                    
+                    // Menambahkan garis pemisah yang tipis
+                    trailing: Icon(Icons.arrow_forward_ios, color: lightTextColor.withOpacity(0.5), size: 16),
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Membuka detail ${item['title']}")));
+                    },
+                  ),
+                );
+              },
+            ),
     );
   }
 }
