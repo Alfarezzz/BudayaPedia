@@ -1,22 +1,28 @@
-// home.dart
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-// Import file teman Anda:
-import 'mycourse.dart'; 
+// Import Halaman Utama Lain:
+import 'mycourse.dart';
 import 'courseview.dart';
-// Import file Anda yang sebelumnya (Menggunakan nama file yang Anda konfirmasi):
-import 'setting_panel.dart'; 
+import 'setting_panel.dart';
 import 'notifikasi.dart';
-import 'welcome.dart'; 
-// >>> TAMBAHKAN IMPORT PROFILE BARU <<<
-import 'profile.dart'; 
+// Import Halaman Akun (Menggunakan konvensi nama file standar):
+import 'profile.dart'; // Ganti dari 'profile.dart'
+// >>> IMPORT MODEL DATA TUNGGAL <<<
+import 'course_model.dart';
+// >>> END IMPORT MODEL DATA TUNGGAL <<<
+import 'add_course.dart';
 
 // Definisikan warna yang digunakan dalam desain Anda
 const Color primaryColor = Color(0xFF2C3E50);
 const Color darkTextColor = Color(0xFF1E2A3B);
 const Color lightTextColor = Color(0xFF5A6B80);
 const Color navyBlue = Color(0xFF181D31);
+
+// =======================================================
+// C. MODEL DATA KURSUS (DIHAPUS DARI SINI, DIPINDAHKAN KE course_model.dart)
+// =======================================================
+// HAPUS: class Course {...}
+// HAPUS: const List<Course> allCourses = [...]
 
 // =======================================================
 // A. WIDGET UTAMA (PENGELOLA BOTTOM NAVIGATION BAR & UTILITY)
@@ -33,46 +39,37 @@ class _HomePageState extends State<HomePage> {
   // Indeks 0 = Home, Indeks 1 = Courses, Indeks 2 = New, Indeks 3 = Account
   int _currentIndex = 0;
 
-  // Fungsi untuk menampilkan Panel Settings (Memanggil SettingsPanel dari setting_panel.dart)
   void _showSideSettingsPanel() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
-        // Asumsi SettingsPanel ada di setting_panel.dart
-        // HATI-HATI: Pastikan 'SettingsPanel' tersedia di file setting_panel.dart
         return const SettingsPanel();
       },
     );
   }
 
-  // Fungsi untuk navigasi ke Halaman Notifikasi (Memanggil NotificationPage dari notifikasi.dart)
   void _navigateToNotifications() {
     Navigator.push(
       context,
-      // Asumsi NotificationPage ada di notifikasi.dart
-      MaterialPageRoute(builder: (context) => const NotificationPage()), 
+      MaterialPageRoute(builder: (context) => const NotificationPage()),
     );
   }
 
-  // Daftar widget/halaman yang akan ditampilkan (Menggunakan callback)
-  // Perhatikan perubahan di indeks 3!
-  late final List<Widget> _pages = [
-    // [0] HomeContentWidget sekarang menerima fungsi callback
-    HomeContentWidget(
-      onNotificationsPressed: _navigateToNotifications,
-      onSettingsPressed: _showSideSettingsPanel,
-    ), 
-    const MyCoursePage(),// [1] Halaman Kursus (dari mycourse.dart)
-    const Center(child: Text('Halaman New (Add Box)', style: TextStyle(fontSize: 24, color: darkTextColor))),
-    const ProfilePage(), // [3] >>> INI HALAMAN PROFILE BARU ANDA <<<
-  ];
+  // Daftar widget/halaman yang akan ditampilkan
+ late final List<Widget> _pages = [
+  // [0] Home
+  HomeContentWidget(
+    onNotificationsPressed: _navigateToNotifications,
+    onSettingsPressed: _showSideSettingsPanel,
+  ),
+  MyCoursePage(), // [1] Halaman Kursus (dari mycourse.dart)
+  const AddCoursePage(), // [2] Halaman Add Course ← UBAH DI SINI
+  const ProfilePage(), // [3] Halaman Account
+];
 
   void onTabTapped(int index) {
-    // BUG FIX: Jika user mengklik tombol 'Account' saat di tab lain,
-    // kita set currentIndex ke 3. Jika user mengklik 'Account' saat sudah di tab 3,
-    // tidak perlu melakukan apa-apa, atau bisa juga refresh halaman.
     setState(() {
       _currentIndex = index;
     });
@@ -81,17 +78,16 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Tampilkan halaman yang sesuai dengan indeks saat ini
       body: _pages[_currentIndex],
 
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: primaryColor, // Warna aktif
-        unselectedItemColor: lightTextColor, // Warna tidak aktif
+        selectedItemColor: primaryColor,
+        unselectedItemColor: lightTextColor,
         showSelectedLabels: true,
         showUnselectedLabels: true,
-        currentIndex: _currentIndex, // Index aktif saat ini
-        onTap: onTabTapped, // Panggil fungsi saat item diklik
+        currentIndex: _currentIndex,
+        onTap: onTabTapped,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.article), label: 'Courses'),
@@ -108,7 +104,6 @@ class _HomePageState extends State<HomePage> {
 // =======================================================
 
 class HomeContentWidget extends StatelessWidget {
-  // Tambahkan callback sebagai properti
   final VoidCallback onNotificationsPressed;
   final VoidCallback onSettingsPressed;
 
@@ -118,7 +113,6 @@ class HomeContentWidget extends StatelessWidget {
     required this.onSettingsPressed,
   });
 
-  // Widget untuk membuat Card Kategori Course (Sumatera, Jawa, dll.)
   Widget _buildCategoryCard(String title, String imagePath) {
     return Container(
       height: 120,
@@ -148,9 +142,7 @@ class HomeContentWidget extends StatelessWidget {
     );
   }
 
-  // Widget untuk menampilkan Course yang sedang Populer
   Widget _buildPopularCourseCard(BuildContext context, Course courseData) {
-    // Menggunakan data yang di-pass, bukan statis lagi
     return Card(
       margin: const EdgeInsets.only(bottom: 20),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -162,11 +154,15 @@ class HomeContentWidget extends StatelessWidget {
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
             child: Image.asset(
-              courseData.imageUrl, 
+              courseData.imageUrl,
               height: 200,
               width: double.infinity,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(height: 200, color: Colors.grey, child: const Center(child: Text("Image Not Found"))),
+              errorBuilder: (context, error, stackTrace) => Container(
+                height: 200,
+                color: Colors.grey,
+                child: const Center(child: Text("Image Not Found")),
+              ),
             ),
           ),
           // Konten Teks
@@ -185,9 +181,9 @@ class HomeContentWidget extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   courseData.description,
-                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                    color: lightTextColor,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium!.copyWith(color: lightTextColor),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -200,14 +196,25 @@ class HomeContentWidget extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryColor,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         minimumSize: Size.zero,
                       ),
-                      child: const Text('Chef William Wongso', style: TextStyle(fontSize: 14)), // Dipertahankan statis
+                      child: const Text(
+                        'Chef William Wongso',
+                        style: TextStyle(fontSize: 14),
+                      ),
                     ),
                     const SizedBox(width: 10),
-                    Text(courseData.duration, style: const TextStyle(color: lightTextColor)),
+                    Text(
+                      courseData.duration,
+                      style: const TextStyle(color: lightTextColor),
+                    ),
                   ],
                 ),
               ],
@@ -220,33 +227,33 @@ class HomeContentWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    
-    // PERBAIKAN BUG: Mencari kursus Rendang secara spesifik
-    // Ganti pencarian Rendang dengan salah satu data kursus yang ada di mycourse.dart,
-    // Misal: "Filosofi Adat" atau "Tari Klasik"
+    // Mencari kursus Rendang secara spesifik
     final Course popularCourse = allCourses.firstWhere(
-        (course) => course.title.contains("Filosofi"),
-        orElse: () => allCourses[0], // Fallback ke kursus pertama jika tidak ditemukan
+      (course) => course.title.contains("Rendang"),
+      orElse: () => allCourses[0],
     );
-    
+
     // Ambil display name pengguna yang login (jika ada)
     final user = FirebaseAuth.instance.currentUser;
-    
-    // LOGIKA PENGAMBILAN NAMA PENGGUNA (FALLBACK KE EMAIL, SANGAT SEDERHANA)
+
+    // LOGIKA PENGAMBILAN NAMA PENGGUNA
     final String username;
     if (user?.displayName != null && user!.displayName!.isNotEmpty) {
       username = user.displayName!;
     } else if (user?.email != null) {
       String emailPrefix = user!.email!.split('@').first;
-      
-      // Sederhana: Ambil semua sebelum '@' dan kapitalisasi huruf pertama
-      username = emailPrefix.isNotEmpty 
-          ? emailPrefix[0].toUpperCase() + emailPrefix.substring(1).toLowerCase() 
+      username = emailPrefix.isNotEmpty
+          ? emailPrefix[0].toUpperCase() +
+                emailPrefix.substring(1).toLowerCase()
           : 'Pengguna';
     } else {
-      username = "Pengguna"; 
+      username = "Pengguna";
     }
 
+    // Filter kategori unik (menghilangkan Rendang yang sudah ada di Popular Now)
+    final List<Course> uniqueCategoryCourses = allCourses
+        .where((course) => course.title != popularCourse.title)
+        .toList();
 
     return SingleChildScrollView(
       child: Column(
@@ -254,7 +261,12 @@ class HomeContentWidget extends StatelessWidget {
         children: <Widget>[
           // --- 1. Header Profil ---
           Container(
-            padding: const EdgeInsets.only(top: 50, left: 20, right: 20, bottom: 20),
+            padding: const EdgeInsets.only(
+              top: 50,
+              left: 20,
+              right: 20,
+              bottom: 20,
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -263,7 +275,8 @@ class HomeContentWidget extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Container( // Placeholder Foto Profil
+                        Container(
+                          // Placeholder Foto Profil
                           width: 50,
                           height: 50,
                           decoration: BoxDecoration(
@@ -276,29 +289,44 @@ class HomeContentWidget extends StatelessWidget {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Tampilkan nama pengguna yang sudah diperbaiki
-                            Text('Halo, $username!', style: Theme.of(context).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold)),
-                            const Text('Student', style: TextStyle(color: lightTextColor)),
+                            Text(
+                              'Halo, $username!',
+                              style: Theme.of(context).textTheme.titleMedium!
+                                  .copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            const Text(
+                              'Student',
+                              style: TextStyle(color: lightTextColor),
+                            ),
                           ],
                         ),
                       ],
                     ),
                     const SizedBox(height: 5),
-                    const Text('Learning Hours - 30 minutes 45 seconds ago', style: TextStyle(color: lightTextColor, fontSize: 12)),
+                    const Text(
+                      'Learning Hours - 30 minutes 45 seconds ago',
+                      style: TextStyle(color: lightTextColor, fontSize: 12),
+                    ),
                   ],
                 ),
-                // Ikon Notifikasi dan Pengaturan (MENGGUNAKAN CALLBACK)
+                // Ikon Notifikasi dan Pengaturan
                 Row(
                   children: [
                     // Notifikasi
                     IconButton(
-                      icon: const Icon(Icons.notifications_none, color: lightTextColor),
+                      icon: const Icon(
+                        Icons.notifications_none,
+                        color: lightTextColor,
+                      ),
                       onPressed: onNotificationsPressed,
                     ),
                     const SizedBox(width: 5),
                     // Pengaturan
                     IconButton(
-                      icon: const Icon(Icons.settings_outlined, color: lightTextColor),
+                      icon: const Icon(
+                        Icons.settings_outlined,
+                        color: lightTextColor,
+                      ),
                       onPressed: onSettingsPressed,
                     ),
                   ],
@@ -313,7 +341,12 @@ class HomeContentWidget extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Popular Sekarang', style: Theme.of(context).textTheme.headlineSmall!.copyWith(fontWeight: FontWeight.bold)),
+                Text(
+                  'Popular Sekarang',
+                  style: Theme.of(context).textTheme.headlineSmall!.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 ElevatedButton.icon(
                   onPressed: () {},
                   icon: const Icon(Icons.flash_on, size: 16),
@@ -322,7 +355,10 @@ class HomeContentWidget extends StatelessWidget {
                     backgroundColor: const Color(0xFFFFCC33),
                     foregroundColor: darkTextColor,
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     minimumSize: Size.zero,
                   ),
                 ),
@@ -330,18 +366,24 @@ class HomeContentWidget extends StatelessWidget {
             ),
           ),
 
-          // --- 3. Popular Course Card (Menggunakan data dari allCourses) ---
+          // --- 3. Popular Course Card (Rendang) ---
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: GestureDetector(
-            onTap: () {
-              // Navigasi ke CourseDetailsView dengan membawa data popularCourse
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => CourseDetailsView(course: popularCourse)),
-              );
+              onTap: () {
+                // Navigasi ke CourseDetailsView dengan membawa data Rendang (popularCourse)
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        CourseDetailsView(course: popularCourse),
+                  ),
+                );
               },
-            child: _buildPopularCourseCard(context, popularCourse), // Menggunakan data yang sudah disesuaikan
+              child: _buildPopularCourseCard(
+                context,
+                popularCourse,
+              ), // Menggunakan data Rendang
             ),
           ),
 
@@ -351,14 +393,21 @@ class HomeContentWidget extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Kategori Course', style: Theme.of(context).textTheme.headlineSmall!.copyWith(fontWeight: FontWeight.bold)),
+                Text(
+                  'Kategori Course',
+                  style: Theme.of(context).textTheme.headlineSmall!.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 TextButton(
-                  onPressed: () {
-                    // Pindah ke tab Courses (Index 1) saat View All diklik
-                    final _HomePageState? state = context.findAncestorStateOfType<_HomePageState>();
-                    state?.onTabTapped(1); 
-                  },
-                  child: const Text('View all', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+                  onPressed: () {},
+                  child: const Text(
+                    'View all',
+                    style: TextStyle(
+                      color: primaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -370,24 +419,22 @@ class HomeContentWidget extends StatelessWidget {
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              // Menggunakan list kursus penuh
-              itemCount: allCourses.length, 
+              itemCount: uniqueCategoryCourses
+                  .length, // Menggunakan daftar yang sudah difilter
               itemBuilder: (context, index) {
-                final course = allCourses[index];
-                
-                // Pengecekan: Lewati kursus yang sama dengan 'Popular Sekarang'
-                if (course.title.contains("Filosofi") && popularCourse == course) return const SizedBox.shrink(); 
-                
+                final course = uniqueCategoryCourses[index];
+
                 return GestureDetector(
-                    onTap: () {
-                      // Navigasi kategori juga harus ke detail kursus terkait
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => CourseDetailsView(course: course)),
-                      );
-                    },
-                    // Menggunakan kategori dan gambar kursus
-                    child: _buildCategoryCard(course.category, course.imageUrl), 
+                  onTap: () {
+                    // Navigasi kategori juga harus ke detail kursus terkait
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CourseDetailsView(course: course),
+                      ),
+                    );
+                  },
+                  child: _buildCategoryCard(course.category, course.imageUrl),
                 );
               },
             ),
@@ -411,13 +458,23 @@ class HomeContentWidget extends StatelessWidget {
                     children: [
                       const Icon(Icons.star, color: Colors.amber, size: 24),
                       const SizedBox(width: 8),
-                      Text('BudayaPedia Premium', style: Theme.of(context).textTheme.titleLarge!.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
+                      Text(
+                        'LearniO Premium',
+                        style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  const Text('Lebih banyak course. Lebih banyak pengetahuan.', style: TextStyle(color: Colors.white70)),
+                  const Text(
+                    'More courses. More learning.',
+                    style: TextStyle(color: Colors.white70),
+                  ),
                   const SizedBox(height: 15),
-                  const Text('Daftar ke BudayaPedia Premium dan dapatkan akses instan ke lebih banyak materi pembelajaran budaya favorit Anda serta manfaat premium lainnya.',
+                  const Text(
+                    'Sign up for LearniO Premium and instantly access more of your favorite learning material and gain premium perks and benefits.',
                     style: TextStyle(color: Colors.white),
                   ),
                   const SizedBox(height: 20),
@@ -426,10 +483,18 @@ class HomeContentWidget extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: darkTextColor,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 25,
+                        vertical: 12,
+                      ),
                     ),
-                    child: const Text('Pelajari Lebih Lanjut', style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'Learn More',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ),

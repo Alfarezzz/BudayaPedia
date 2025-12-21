@@ -1,5 +1,3 @@
-// profile.dart (KOREKSI AKHIR: Hapus Helpdesk & Warna Premium)
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart'; 
@@ -10,9 +8,8 @@ import 'login.dart';
 import 'security_page.dart';
 import 'settings_page.dart'; 
 import 'info_hub_page.dart'; 
-import 'learning_history_page.dart'; // Kelas ini akan direvisi di bagian bawah
+import 'learning_history_page.dart'; 
 
-// Definisikan warna yang digunakan (PALET PREMIUM)
 const Color primaryColor = Color(0xFF1F3A4B); // Biru Tua (Deep Navy)
 const Color darkTextColor = Color(0xFF212121); // Hitam Pekat
 const Color lightTextColor = Color(0xFF757575); // Abu-abu Medium
