@@ -1,10 +1,16 @@
+// ============================================
+// FILE: lib/pages/login.dart
+// ============================================
+
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-//import 'package:budayapedia/pages/welcome.dart';
 import 'package:budayapedia/pages/home.dart';
 import 'package:budayapedia/pages/signup.dart';
+import 'package:budayapedia/pages/admin_login.dart';
+import 'package:budayapedia/pages/admin_dashboard.dart';
 
 // Konstanta Warna
 const Color primaryColor = Color(0xFF2C3E50); // Biru gelap untuk tombol utama
@@ -21,7 +27,6 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   // Instances
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  // Gunakan const untuk menghindari error constructor
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   // Controllers
@@ -33,10 +38,13 @@ class _LoginPageState extends State<LoginPage> {
   bool _rememberMe = false;
   bool _isLoading = false;
   static const String _rememberMeKey = 'rememberMeFlag';
+  
+  // Secret Admin Access
+  int _tapCount = 0;
+  Timer? _resetTimer;
 
   // Helper untuk menampilkan pesan error
   void _showSnackBar(String message) {
-    // Pastikan context valid saat menggunakan ScaffoldMessenger
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
@@ -69,53 +77,82 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   // --- FUNGSI OTENTIKASI (Email/Password) ---
-  // Hapus fungsi simulasi lama, ini adalah fungsi otentikasi yang benar
-  Future<void> _handleSignIn() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showSnackBar('Email dan Password tidak boleh kosong.');
-      return;
-    }
+  // Update fungsi _handleSignIn() di login.dart
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await _auth.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-
-      // Navigasi ke WelcomePage (asumsi StreamBuilder di main.dart akan menangani ini)
-      // Gunakan pushReplacement agar pengguna tidak bisa kembali ke halaman login
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
-      );
-
-    } on FirebaseAuthException catch (e) {
-      String message;
-      if (e.code == 'user-not-found') {
-        message = 'Tidak ada pengguna yang ditemukan dengan email ini.';
-      } else if (e.code == 'wrong-password') {
-        message = 'Password salah.';
-      } else {
-        message = 'Login Gagal: ${e.message}';
-      }
-      _showSnackBar(message);
-
-    } catch (e) {
-      _showSnackBar('Terjadi kesalahan tak terduga.');
-      debugPrint('Error Login: $e');
-    }
-
-    // Nonaktifkan Loading hanya jika navigasi gagal (jika berhasil, halaman sudah diganti)
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+Future<void> _handleSignIn() async {
+  if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    _showSnackBar('Email dan Password tidak boleh kosong.');
+    return;
   }
+
+  setState(() {
+    _isLoading = true;
+  });
+
+  try {
+    UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+      email: _emailController.text.trim(),
+      password: _passwordController.text.trim(),
+    );
+
+    // ✅ DEBUG: Print email yang login
+    print('🔥 DEBUG - Email yang login: ${userCredential.user?.email}');
+
+    // Daftar email admin
+    final List<String> adminEmails = [
+      'admin@budayapedia.com',
+      'superadmin@budayapedia.com',
+    ];
+
+    // ✅ DEBUG: Cek apakah email ada di list
+    bool isAdmin = adminEmails.contains(userCredential.user?.email);
+    print('🔥 DEBUG - Is Admin: $isAdmin');
+    print('🔥 DEBUG - Admin Emails List: $adminEmails');
+
+    // Cek apakah email user adalah admin
+    if (isAdmin) {
+      print('🔥 DEBUG - Navigating to AdminDashboardPage...');
+      // Navigasi ke Admin Dashboard
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AdminDashboardPage()),
+        );
+      }
+    } else {
+      print('🔥 DEBUG - Navigating to HomePage...');
+      // Navigasi ke HomePage (User biasa)
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
+      }
+    }
+    
+  } on FirebaseAuthException catch (e) {
+    print('🔥 DEBUG - FirebaseAuthException: ${e.code} - ${e.message}');
+    String message;
+    if (e.code == 'user-not-found') {
+      message = 'Tidak ada pengguna yang ditemukan dengan email ini.';
+    } else if (e.code == 'wrong-password') {
+      message = 'Password salah.';
+    } else {
+      message = 'Login Gagal: ${e.message}';
+    }
+    _showSnackBar(message);
+  } catch (e) {
+    print('🔥 DEBUG - General Exception: $e');
+    _showSnackBar('Terjadi kesalahan tak terduga.');
+    debugPrint('Error Login: $e');
+  }
+
+  if (mounted) {
+    setState(() {
+      _isLoading = false;
+    });
+  }
+}
 
   // --- FUNGSI OTENTIKASI (Google) ---
   Future<void> _signInWithGoogle() async {
@@ -123,7 +160,8 @@ class _LoginPageState extends State<LoginPage> {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return;
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -131,11 +169,12 @@ class _LoginPageState extends State<LoginPage> {
 
       await _auth.signInWithCredential(credential);
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
-      );
-
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
+      }
     } on FirebaseAuthException catch (e) {
       _showSnackBar('Google Sign-In Gagal: ${e.message}');
     } catch (e) {
@@ -153,12 +192,12 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _resetTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // ... (sisa kode build Anda)
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -166,10 +205,35 @@ class _LoginPageState extends State<LoginPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-              // --- 1. Logo dan Judul ---
-              Image.asset(
-                'assets/budayapedia.png',
-                height: 80,
+              // --- 1. Logo dan Judul (dengan Secret Admin Access) ---
+              GestureDetector(
+                onTap: () {
+                  setState(() => _tapCount++);
+
+                  // Reset timer
+                  _resetTimer?.cancel();
+                  _resetTimer = Timer(const Duration(seconds: 2), () {
+                    if (mounted) {
+                      setState(() => _tapCount = 0);
+                    }
+                  });
+
+                  // Jika tap 5x, buka Admin Login
+                  if (_tapCount >= 5) {
+                    _tapCount = 0;
+                    _resetTimer?.cancel();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AdminLoginPage(),
+                      ),
+                    );
+                  }
+                },
+                child: Image.asset(
+                  'assets/budayapedia.png',
+                  height: 80,
+                ),
               ),
               const SizedBox(height: 10),
               const Text(
@@ -199,17 +263,27 @@ class _LoginPageState extends State<LoginPage> {
               // --- 2. Input Email/Username ---
               const Align(
                 alignment: Alignment.centerLeft,
-                child: Text('Email or Username', style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontFamily: 'DMSans')),
+                child: Text(
+                  'Email or Username',
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'DMSans',
+                  ),
+                ),
               ),
               const SizedBox(height: 8),
               TextFormField(
-                controller: _emailController, // Controller terpasang
+                controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(
                   hintText: 'youremail@example.com',
                   hintStyle: TextStyle(color: grayColor, fontFamily: 'DMSans'),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
-                  contentPadding: EdgeInsets.symmetric(vertical: 14.0, horizontal: 15.0),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(10)),
+                  ),
+                  contentPadding:
+                      EdgeInsets.symmetric(vertical: 14.0, horizontal: 15.0),
                 ),
               ),
               const SizedBox(height: 20),
@@ -217,21 +291,35 @@ class _LoginPageState extends State<LoginPage> {
               // --- 3. Input Password ---
               const Align(
                 alignment: Alignment.centerLeft,
-                child: Text('Password', style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontFamily: 'DMSans')),
+                child: Text(
+                  'Password',
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'DMSans',
+                  ),
+                ),
               ),
               const SizedBox(height: 8),
               TextFormField(
-                controller: _passwordController, // Controller terpasang
+                controller: _passwordController,
                 obscureText: !_isPasswordVisible,
                 decoration: InputDecoration(
                   hintText: '12345',
-                  hintStyle: const TextStyle(color: grayColor, fontFamily: 'DMSans'),
-                  border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 15.0),
+                  hintStyle:
+                      const TextStyle(color: grayColor, fontFamily: 'DMSans'),
+                  border: const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(10)),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                      vertical: 14.0, horizontal: 15.0),
                   suffixIcon: IconButton(
                     icon: Icon(
-                        _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                        color: grayColor),
+                      _isPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                      color: grayColor,
+                    ),
                     onPressed: _toggleVisibility,
                   ),
                 ),
@@ -254,12 +342,22 @@ class _LoginPageState extends State<LoginPage> {
                         },
                         activeColor: primaryColor,
                       ),
-                      const Text('Remember me', style: TextStyle(color: grayColor, fontFamily: 'DMSans')),
+                      const Text(
+                        'Remember me',
+                        style: TextStyle(color: grayColor, fontFamily: 'DMSans'),
+                      ),
                     ],
                   ),
                   TextButton(
                     onPressed: () {},
-                    child: const Text('Forgot password?', style: TextStyle(color: primaryColor, fontWeight: FontWeight.w600, fontFamily: 'DMSans')),
+                    child: const Text(
+                      'Forgot password?',
+                      style: TextStyle(
+                        color: primaryColor,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'DMSans',
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -270,8 +368,7 @@ class _LoginPageState extends State<LoginPage> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _handleSignIn, // Menggunakan _handleSignIn yang asli
-
+                  onPressed: _isLoading ? null : _handleSignIn,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryColor,
                     foregroundColor: Colors.white,
@@ -280,23 +377,24 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     elevation: 5,
                   ),
-
                   child: _isLoading
                       ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      strokeWidth: 3,
-                    ),
-                  )
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                            strokeWidth: 3,
+                          ),
+                        )
                       : const Text(
-                      'Sign In',
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'DMSans')
-                  ),
+                          'Sign In',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'DMSans',
+                          ),
+                        ),
                 ),
               ),
 
@@ -304,27 +402,21 @@ class _LoginPageState extends State<LoginPage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10.0),
                 child: Row(
-                  children: <Widget>[
-                    // Garis kiri
-                    const Expanded(
+                  children: const <Widget>[
+                    Expanded(
                       child: Divider(
                         color: grayColor,
                         thickness: 1.0,
                       ),
                     ),
-                    // Teks 'or' di tengah
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.symmetric(horizontal: 10.0),
                       child: Text(
-                          'or',
-                          style: TextStyle(
-                              color: grayColor,
-                              fontFamily: 'DMSans'
-                          )
+                        'or',
+                        style: TextStyle(color: grayColor, fontFamily: 'DMSans'),
                       ),
                     ),
-                    // Garis kanan
-                    const Expanded(
+                    Expanded(
                       child: Divider(
                         color: grayColor,
                         thickness: 1.0,
@@ -340,8 +432,7 @@ class _LoginPageState extends State<LoginPage> {
                 width: double.infinity,
                 height: 50,
                 child: OutlinedButton(
-                  onPressed: _signInWithGoogle, // Menggunakan _signInWithGoogle
-
+                  onPressed: _signInWithGoogle,
                   style: OutlinedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -360,9 +451,9 @@ class _LoginPageState extends State<LoginPage> {
                       const Text(
                         'Sign in with Google',
                         style: TextStyle(
-                            fontSize: 18,
-                            color: textColor,
-                            fontFamily: 'DMSans'
+                          fontSize: 18,
+                          color: textColor,
+                          fontFamily: 'DMSans',
                         ),
                       ),
                     ],
@@ -375,15 +466,27 @@ class _LoginPageState extends State<LoginPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("Don't have an account? ", style: TextStyle(color: textColor, fontFamily: 'DMSans')),
+                  const Text(
+                    "Don't have an account? ",
+                    style: TextStyle(color: textColor, fontFamily: 'DMSans'),
+                  ),
                   TextButton(
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const SignUpPage()),
+                        MaterialPageRoute(
+                          builder: (context) => const SignUpPage(),
+                        ),
                       );
                     },
-                    child: const Text('Sign up', style: TextStyle(color: primaryColor, fontWeight: FontWeight.w600, fontFamily: 'DMSans')),
+                    child: const Text(
+                      'Sign up',
+                      style: TextStyle(
+                        color: primaryColor,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'DMSans',
+                      ),
+                    ),
                   ),
                 ],
               ),

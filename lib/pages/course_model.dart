@@ -96,6 +96,10 @@ final List<Course> allCourses = [
 // MODEL DATA UNTUK UPLOAD KURSUS
 // ============================================
 
+// ============================================
+// FILE: lib/models/course_model.dart
+// ============================================
+
 enum CourseStatus { pending, approved, rejected }
 
 class CourseData {
@@ -105,7 +109,7 @@ class CourseData {
   String? category;
   String? duration;
   String? description;
-  dynamic thumbnail; // File
+  dynamic thumbnail;
   List<String> learningOutcomes;
   List<CourseSection> sections;
   CourseStatus? status;
@@ -141,11 +145,28 @@ class Lesson {
   String title;
   String type;
   String? contentPath;
+  List<QuizQuestion>? quizQuestions;
   
-  Lesson({required this.title, required this.type, this.contentPath});
+  Lesson({
+    required this.title,
+    required this.type,
+    this.contentPath,
+    this.quizQuestions,
+  });
 }
 
-// Database Simulasi
+class QuizQuestion {
+  String question;
+  List<String> options;
+  int correctAnswer;
+  
+  QuizQuestion({
+    required this.question,
+    required this.options,
+    required this.correctAnswer,
+  });
+}
+
 class CourseDatabase {
   static List<CourseData> uploadedCourses = [];
   static List<CourseData> draftCourses = [];

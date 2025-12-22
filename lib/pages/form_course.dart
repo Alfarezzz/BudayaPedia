@@ -5,10 +5,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'course_model.dart';
 import 'status_course.dart';
+import 'draft_course.dart';
 
-const Color primaryColor = Color(0xFF2196F3);
-const Color darkTextColor = Color(0xFF5A6B80);
-const Color lightTextColor = Color(0xFF1E2A3B);
+const Color primaryColor = Color(0xFF2C3E50);
+const Color darkTextColor = Color(0xFF1E2A3B);
+const Color lightTextColor = Color(0xFF5A6B80);
+const Color accentColor = Color(0xFF3498DB);
 
 class AddCourseFormPage extends StatefulWidget {
   final CourseData? draftData;
@@ -67,7 +69,6 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
     super.dispose();
   }
 
-  // UPLOAD THUMBNAIL
   Future<void> _pickThumbnail() async {
     final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery);
     if (image != null) {
@@ -77,9 +78,10 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
     }
   }
 
-  void _saveDraft() {
+  // 1. Fungsi internal untuk menyimpan data ke database tanpa memunculkan dialog
+  void _saveDraftInternal() {
     final draftCourse = CourseData(
-      title: _titleController.text,
+      title: _titleController.text.isNotEmpty ? _titleController.text : 'Untitled Course',
       subtitle: _subtitleController.text,
       author: _authorController.text,
       category: _selectedCategory,
@@ -91,7 +93,41 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
       isDraft: true,
     );
     
-    // Cek apakah ini edit draft atau draft baru
+    if (widget.draftData != null) {
+      int index = CourseDatabase.draftCourses.indexOf(widget.draftData!);
+      if (index != -1) {
+        CourseDatabase.draftCourses[index] = draftCourse;
+      }
+    } else {
+      CourseDatabase.draftCourses.add(draftCourse);
+    }
+  }
+
+  // 2. Fungsi baru khusus untuk tombol pojok kanan atas
+  void _saveAndGoToDrafts() {
+    _saveDraftInternal(); // Simpan data dulu
+    
+    // Langsung navigasi ke halaman Draft
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const DraftCoursePage()),
+    );
+  }
+
+  void _saveDraft() {
+    final draftCourse = CourseData(
+      title: _titleController.text.isNotEmpty ? _titleController.text : 'Untitled Course',
+      subtitle: _subtitleController.text,
+      author: _authorController.text,
+      category: _selectedCategory,
+      duration: _durationController.text,
+      description: _descriptionController.text,
+      thumbnail: _thumbnailFile,
+      learningOutcomes: _learningOutcomes,
+      sections: _sections,
+      isDraft: true,
+    );
+    
     if (widget.draftData != null) {
       int index = CourseDatabase.draftCourses.indexOf(widget.draftData!);
       if (index != -1) {
@@ -105,11 +141,11 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: const [
-            Icon(Icons.check_circle, color: Colors.green),
-            SizedBox(width: 10),
+            Icon(Icons.check_circle, color: Colors.green, size: 28),
+            SizedBox(width: 12),
             Text('Draft Tersimpan'),
           ],
         ),
@@ -117,8 +153,8 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
         actions: [
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Kembali ke halaman sebelumnya (akan refresh otomatis)
+              Navigator.pop(context);
+              Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryColor,
@@ -166,7 +202,6 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
       
       CourseDatabase.uploadedCourses.add(uploadedCourse);
       
-      // Hapus dari draft jika ini adalah edit draft
       if (widget.draftData != null) {
         CourseDatabase.draftCourses.remove(widget.draftData);
       }
@@ -185,6 +220,7 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
         content: Text(message),
         backgroundColor: Colors.red[400],
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
@@ -282,6 +318,7 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
     final TextEditingController lessonTitleController = TextEditingController();
     String? selectedType;
     String? contentPath;
+    List<QuizQuestion> quizQuestions = [];
 
     showDialog(
       context: context,
@@ -309,30 +346,29 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'video', child: Text('Video')),
-                      DropdownMenuItem(value: 'pdf', child: Text('PDF')),
-                      DropdownMenuItem(value: 'text', child: Text('Text')),
+                      DropdownMenuItem(value: 'pdf', child: Text('📄 PDF Document')),
+                      DropdownMenuItem(value: 'text', child: Text('📝 Text/Article')),
+                      DropdownMenuItem(value: 'quiz', child: Text('❓ Quiz')),
                     ],
                     onChanged: (value) {
                       setDialogState(() {
                         selectedType = value;
                         contentPath = null;
+                        quizQuestions = [];
                       });
                     },
                   ),
                   const SizedBox(height: 16),
-                  if (selectedType != null)
+                  
+                  // PDF Upload
+                  if (selectedType == 'pdf')
                     OutlinedButton.icon(
                       icon: const Icon(Icons.upload_file),
-                      label: Text(contentPath == null ? 'Upload File' : 'File: ${contentPath!.split('/').last}'),
+                      label: Text(contentPath == null ? 'Upload PDF' : 'File: ${contentPath!.split('/').last}'),
                       onPressed: () async {
                         FilePickerResult? result = await FilePicker.platform.pickFiles(
                           type: FileType.custom,
-                          allowedExtensions: selectedType == 'video' 
-                              ? ['mp4', 'mov', 'avi']
-                              : selectedType == 'pdf'
-                                  ? ['pdf']
-                                  : ['txt', 'docx'],
+                          allowedExtensions: ['pdf'],
                         );
                         
                         if (result != null) {
@@ -342,9 +378,119 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
                         }
                       },
                       style: OutlinedButton.styleFrom(
+                        foregroundColor: primaryColor,
                         minimumSize: const Size(double.infinity, 45),
                       ),
                     ),
+                  
+                  // Text/Article Input
+                  if (selectedType == 'text')
+                    TextField(
+                      maxLines: 5,
+                      decoration: InputDecoration(
+                        labelText: 'Tulis artikel/konten',
+                        hintText: 'Ketik konten teks di sini...',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onChanged: (value) {
+                        contentPath = value;
+                      },
+                    ),
+                  
+                  // Quiz Builder
+                  if (selectedType == 'quiz') ...[
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: accentColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: accentColor.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.quiz, color: accentColor, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Quiz Questions (${quizQuestions.length})',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: accentColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          if (quizQuestions.isEmpty)
+                            Center(
+                              child: Text(
+                                'Belum ada pertanyaan',
+                                style: TextStyle(color: lightTextColor, fontSize: 13),
+                              ),
+                            )
+                          else
+                            ...quizQuestions.asMap().entries.map((entry) {
+                              final idx = entry.key;
+                              final q = entry.value;
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.grey[300]!),
+                                ),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 12,
+                                      backgroundColor: primaryColor,
+                                      child: Text('${idx + 1}', style: const TextStyle(fontSize: 10, color: Colors.white)),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        q.question,
+                                        style: const TextStyle(fontSize: 13),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.close, size: 18),
+                                      onPressed: () {
+                                        setDialogState(() {
+                                          quizQuestions.removeAt(idx);
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('Tambah Pertanyaan'),
+                            onPressed: () {
+                              _showAddQuizQuestionDialog(context, (question) {
+                                setDialogState(() {
+                                  quizQuestions.add(question);
+                                });
+                              });
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: accentColor,
+                              minimumSize: const Size(double.infinity, 40),
+                              side: BorderSide(color: accentColor),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -355,18 +501,42 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  if (lessonTitleController.text.isNotEmpty && selectedType != null) {
-                    setState(() {
-                      _sections[sectionIndex].lessons.add(
-                        Lesson(
-                          title: lessonTitleController.text,
-                          type: selectedType!,
-                          contentPath: contentPath,
-                        ),
-                      );
-                    });
-                    Navigator.pop(context);
+                  if (lessonTitleController.text.isEmpty) {
+                    _showError('Judul lesson harus diisi');
+                    return;
                   }
+                  
+                  if (selectedType == null) {
+                    _showError('Pilih tipe konten');
+                    return;
+                  }
+                  
+                  if (selectedType == 'pdf' && contentPath == null) {
+                    _showError('Upload file PDF terlebih dahulu');
+                    return;
+                  }
+                  
+                  if (selectedType == 'text' && (contentPath == null || contentPath!.isEmpty)) {
+                    _showError('Tulis konten artikel terlebih dahulu');
+                    return;
+                  }
+                  
+                  if (selectedType == 'quiz' && quizQuestions.isEmpty) {
+                    _showError('Tambahkan minimal 1 pertanyaan quiz');
+                    return;
+                  }
+                  
+                  setState(() {
+                    _sections[sectionIndex].lessons.add(
+                      Lesson(
+                        title: lessonTitleController.text,
+                        type: selectedType!,
+                        contentPath: selectedType == 'quiz' ? '${quizQuestions.length} questions' : contentPath,
+                        quizQuestions: selectedType == 'quiz' ? quizQuestions : null,
+                      ),
+                    );
+                  });
+                  Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
@@ -381,10 +551,127 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
     );
   }
 
+  void _showAddQuizQuestionDialog(BuildContext parentContext, Function(QuizQuestion) onAdd) {
+    final questionController = TextEditingController();
+    final option1Controller = TextEditingController();
+    final option2Controller = TextEditingController();
+    final option3Controller = TextEditingController();
+    final option4Controller = TextEditingController();
+    int correctAnswer = 0;
+
+    showDialog(
+      context: parentContext,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setQuizState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            title: const Text('Buat Pertanyaan Quiz'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: questionController,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      labelText: 'Pertanyaan',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Pilihan Jawaban:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  
+                  _buildQuizOption(option1Controller, 'A', 0, correctAnswer, (val) {
+                    setQuizState(() => correctAnswer = val);
+                  }),
+                  const SizedBox(height: 8),
+                  _buildQuizOption(option2Controller, 'B', 1, correctAnswer, (val) {
+                    setQuizState(() => correctAnswer = val);
+                  }),
+                  const SizedBox(height: 8),
+                  _buildQuizOption(option3Controller, 'C', 2, correctAnswer, (val) {
+                    setQuizState(() => correctAnswer = val);
+                  }),
+                  const SizedBox(height: 8),
+                  _buildQuizOption(option4Controller, 'D', 3, correctAnswer, (val) {
+                    setQuizState(() => correctAnswer = val);
+                  }),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (questionController.text.isEmpty) {
+                    _showError('Pertanyaan harus diisi');
+                    return;
+                  }
+                  
+                  if (option1Controller.text.isEmpty || option2Controller.text.isEmpty ||
+                      option3Controller.text.isEmpty || option4Controller.text.isEmpty) {
+                    _showError('Semua pilihan jawaban harus diisi');
+                    return;
+                  }
+                  
+                  final question = QuizQuestion(
+                    question: questionController.text,
+                    options: [
+                      option1Controller.text,
+                      option2Controller.text,
+                      option3Controller.text,
+                      option4Controller.text,
+                    ],
+                    correctAnswer: correctAnswer,
+                  );
+                  
+                  onAdd(question);
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text('Simpan'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildQuizOption(TextEditingController controller, String label, int value, int groupValue, Function(int) onChanged) {
+    return Row(
+      children: [
+        Radio<int>(
+          value: value,
+          groupValue: groupValue,
+          onChanged: (val) => onChanged(val!),
+          activeColor: Colors.green,
+        ),
+        Expanded(
+          child: TextField(
+            controller: controller,
+            decoration: InputDecoration(
+              labelText: 'Opsi $label',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         title: Text(widget.draftData != null ? 'Edit Draft' : 'Buat Course Baru'),
         backgroundColor: Colors.white,
@@ -394,7 +681,7 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
           TextButton.icon(
             icon: const Icon(Icons.save_outlined, size: 20),
             label: const Text('Draft'),
-            onPressed: _saveDraft,
+            onPressed: _saveAndGoToDrafts,
             style: TextButton.styleFrom(foregroundColor: primaryColor),
           ),
         ],
@@ -406,7 +693,7 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // THUMBNAIL SECTION
+              // THUMBNAIL
               const Text('Thumbnail Course', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkTextColor)),
               const SizedBox(height: 16),
               GestureDetector(
@@ -415,9 +702,16 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
                   height: 200,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.grey[300]!),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: _thumbnailFile == null
                       ? Column(
@@ -447,6 +741,8 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
                   labelText: 'Judul Course *',
                   prefixIcon: const Icon(Icons.title, color: primaryColor),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                  fillColor: Colors.white,
                 ),
                 validator: (v) => v?.isEmpty ?? true ? 'Judul wajib diisi' : null,
               ),
@@ -458,6 +754,8 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
                   labelText: 'Penulis/Instruktur *',
                   prefixIcon: const Icon(Icons.person_outline, color: primaryColor),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                  fillColor: Colors.white,
                 ),
                 validator: (v) => v?.isEmpty ?? true ? 'Nama wajib diisi' : null,
               ),
@@ -469,6 +767,8 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
                   labelText: 'Kategori *',
                   prefixIcon: const Icon(Icons.category_outlined, color: primaryColor),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                  fillColor: Colors.white,
                 ),
                 items: _categories.map((cat) => DropdownMenuItem(value: cat, child: Text(cat))).toList(),
                 onChanged: (v) => setState(() => _selectedCategory = v),
@@ -482,6 +782,8 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
                   labelText: 'Durasi (contoh: 2 jam 30 menit)',
                   prefixIcon: const Icon(Icons.access_time, color: primaryColor),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                  fillColor: Colors.white,
                 ),
               ),
               const SizedBox(height: 32),
@@ -495,6 +797,8 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
                 decoration: InputDecoration(
                   labelText: 'Deskripsi Lengkap *',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                  fillColor: Colors.white,
                 ),
                 validator: (v) => v?.isEmpty ?? true ? 'Deskripsi wajib diisi' : null,
               ),
@@ -505,6 +809,7 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
               
               Container(
                 decoration: BoxDecoration(
+                  color: Colors.white,
                   border: Border.all(color: Colors.grey[300]!),
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -544,7 +849,7 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
                 Container(
                   padding: const EdgeInsets.all(32),
                   decoration: BoxDecoration(
-                    color: Colors.grey[50],
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.grey[200]!),
                   ),
@@ -554,66 +859,75 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
                 )
               else
                 ..._sections.asMap().entries.map((e) {
-                  final sectionIndex = e.key;
-                  final section = e.value;
-                  
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: Colors.grey[200]!),
-                    ),
-                    child: Column(
+                    color: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: ExpansionTile(
+                      leading: CircleAvatar(
+                        backgroundColor: primaryColor,
+                        child: Text('${e.key + 1}', style: const TextStyle(color: Colors.white)),
+                      ),
+                      title: Text(e.value.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text('${e.value.lessons.length} lessons'),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        onPressed: () => setState(() => _sections.removeAt(e.key)),
+                      ),
                       children: [
-                        ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: primaryColor,
-                            child: Text('${sectionIndex + 1}', style: const TextStyle(color: Colors.white)),
-                          ),
-                          title: Text(section.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text('${section.lessons.length} lessons'),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline, color: Colors.red),
-                            onPressed: () => setState(() => _sections.removeAt(sectionIndex)),
-                          ),
-                        ),
-                        if (section.lessons.isNotEmpty) ...[
-                          Divider(height: 1, color: Colors.grey[200]),
-                          ...section.lessons.asMap().entries.map((lessonEntry) {
+                        if (e.value.lessons.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text('Belum ada lesson', style: TextStyle(color: lightTextColor)),
+                          )
+                        else
+                          ...e.value.lessons.map((lesson) {
+                            IconData lessonIcon;
+                            Color lessonColor;
+                            
+                            switch (lesson.type) {
+                              case 'pdf':
+                                lessonIcon = Icons.picture_as_pdf;
+                                lessonColor = Colors.red;
+                                break;
+                              case 'text':
+                                lessonIcon = Icons.article;
+                                lessonColor = Colors.blue;
+                                break;
+                              case 'quiz':
+                                lessonIcon = Icons.quiz;
+                                lessonColor = Colors.orange;
+                                break;
+                              default:
+                                lessonIcon = Icons.circle;
+                                lessonColor = Colors.grey;
+                            }
+                            
                             return ListTile(
                               dense: true,
-                              leading: const SizedBox(width: 20),
-                              title: Text(lessonEntry.value.title, style: const TextStyle(fontSize: 14)),
-                              subtitle: Text(
-                                '${lessonEntry.value.type.toUpperCase()}${lessonEntry.value.contentPath != null ? ' - File uploaded' : ''}',
-                                style: TextStyle(fontSize: 12, color: lightTextColor),
-                              ),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.close, size: 18),
-                                onPressed: () => setState(() => section.lessons.removeAt(lessonEntry.key)),
-                              ),
+                              leading: Icon(lessonIcon, color: lessonColor, size: 20),
+                              title: Text(lesson.title, style: const TextStyle(fontSize: 14)),
+                              subtitle: Text(lesson.type.toUpperCase(), style: const TextStyle(fontSize: 11)),
                             );
                           }).toList(),
-                        ],
                         Divider(height: 1, color: Colors.grey[200]),
                         ListTile(
-                          dense: true,
-                          leading: const Icon(Icons.add, size: 20, color: primaryColor),
-                          title: const Text('Tambah Lesson', style: TextStyle(color: primaryColor, fontSize: 14)),
-                          onTap: () => _showAddLessonDialog(sectionIndex),
+                          leading: const Icon(Icons.add_circle_outline, color: primaryColor),
+                          title: const Text('Tambah Lesson', style: TextStyle(color: primaryColor)),
+                          onTap: () => _showAddLessonDialog(e.key),
                         ),
                       ],
                     ),
                   );
                 }).toList(),
               
-              const SizedBox(height: 12),
               OutlinedButton.icon(
                 icon: const Icon(Icons.add),
                 label: const Text('Tambah Section'),
                 onPressed: _addSection,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: primaryColor,
+                  side: const BorderSide(color: primaryColor),
                   minimumSize: const Size(double.infinity, 50),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -626,6 +940,8 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
                     child: OutlinedButton(
                       onPressed: _saveDraft,
                       style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey[700],
+                        side: BorderSide(color: Colors.grey[400]!),
                         minimumSize: const Size(0, 50),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
@@ -639,14 +955,17 @@ class _AddCourseFormPageState extends State<AddCourseFormPage> {
                       onPressed: _submitCourse,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryColor,
+                        foregroundColor: Colors.white,
                         minimumSize: const Size(0, 50),
+                        elevation: 0,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text('Submit Course'),
+                      child: const Text('Submit untuk Review', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: 20),
             ],
           ),
         ),
