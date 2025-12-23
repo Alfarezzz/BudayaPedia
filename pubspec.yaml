@@ -17,6 +17,7 @@ dependencies:
   firebase_auth: ^6.1.2     # Wajib untuk autentikasi
   google_sign_in: ^6.1.6   # Wajib untuk login Google
   shared_preferences: ^2.5.3
+  cloud_firestore: ^6.1.1
 
   cupertino_icons: ^1.0.8
   image_picker: ^1.2.1
